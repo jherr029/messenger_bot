@@ -43,7 +43,7 @@ app.listen(app.get('port'), function() {
   		    sendGenericMessage(sender)
   		    continue
   	    }
-  	    sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+  	    sendTextMessage(sender, "echo: " + text.substring(0, 200))
       }
       if (event.postback) {
   	    let text = JSON.stringify(event.postback)
@@ -75,8 +75,6 @@ function sendTextMessage(sender, text) {
     })
 }
 
-
-
 function sendGenericMessage(sender) {
     let messageData = {
 	    "attachment": {
@@ -89,8 +87,8 @@ function sendGenericMessage(sender) {
 				    "image_url": "http://i.imgur.com/SaQkSqz.jpg",
 				    "buttons": [{
 					    "type": "web_url",
-					    "url": "https://www.messenger.com",
-					    "title": "web url"
+					    "url": "www.reddit.com",
+					    "title": "Reddit"
 				    }, {
 					    "type": "postback",
 					    "title": "Postback",
@@ -109,6 +107,7 @@ function sendGenericMessage(sender) {
 		    }
 	    }
     }
+
     request({
 	    url: 'https://graph.facebook.com/v2.6/me/messages',
 	    qs: {access_token:token},
