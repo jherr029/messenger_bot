@@ -31,18 +31,28 @@ app.listen(app.get('port'), function() {
 	console.log('running on port', app.get('port'))
 })
 
-app.post('/webhook/', function (req, res) {
+
+  app.post('/webhook/', function (req, res) {
     let messaging_events = req.body.entry[0].messaging
     for (let i = 0; i < messaging_events.length; i++) {
-	    let event = req.body.entry[0].messaging[i]
-	    let sender = event.sender.id
-	    if (event.message && event.message.text) {
-		    let text = event.message.text
-		    sendTextMessage(sender,  text.substring(0, 200))
-	    }
+      let event = req.body.entry[0].messaging[i]
+      let sender = event.sender.id
+      if (event.message && event.message.text) {
+  	    let text = event.message.text
+  	    if (text === 'Generic') {
+  		    sendGenericMessage(sender)
+  		    continue
+  	    }
+  	    sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+      }
+      if (event.postback) {
+  	    let text = JSON.stringify(event.postback)
+  	    sendTextMessage(sender, "Postback received: "+text.substring(0, 200), token)
+  	    continue
+      }
     }
     res.sendStatus(200)
-})
+  })
 
 const token = "EAABmivoBxgMBABUwv2kWOZCpuwb7kG3mFeC1frQ91Kwmg7XLDgthAjsTGFZAe8tLKPLtUjLHTAQe4iLYNwGzN6S4xPhNQdDaWxNXVZAVrxrE5nfkMp9ZBgxxVKItkqaRQEZCADV1Vm7cMt3lt9Fib3qQrxeXXSVVuZA54X6ZARykAZDZD"
 
@@ -66,45 +76,6 @@ function sendTextMessage(sender, text) {
 }
 
 
-
-app.post('/webhook/', function (req, res) {
-    let messaging_events = req.body.entry[0].messaging
-    for (let i = 0; i < messaging_events.length; i++) {
-	    let event = req.body.entry[0].messaging[i]
-	    let sender = event.sender.id
-	    if (event.message && event.message.text) {
-		    let text = event.message.text
-		    if (text === 'Generic') {
-			    sendGenericMessage(sender)
-		    	continue
-		    }
-		    sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
-	    }
-    }
-    res.sendStatus(200)
-})
-
-  app.post('/webhook/', function (req, res) {
-    let messaging_events = req.body.entry[0].messaging
-    for (let i = 0; i < messaging_events.length; i++) {
-      let event = req.body.entry[0].messaging[i]
-      let sender = event.sender.id
-      if (event.message && event.message.text) {
-  	    let text = event.message.text
-  	    if (text === 'Generic') {
-  		    sendGenericMessage(sender)
-  		    continue
-  	    }
-  	    sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
-      }
-      if (event.postback) {
-  	    let text = JSON.stringify(event.postback)
-  	    sendTextMessage(sender, "Postback received: "+text.substring(0, 200), token)
-  	    continue
-      }
-    }
-    res.sendStatus(200)
-  })
 
 function sendGenericMessage(sender) {
     let messageData = {
