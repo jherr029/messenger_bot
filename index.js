@@ -46,153 +46,111 @@ app.post('/webhook/', function (req, res) {
 
 const token = "EAABmivoBxgMBABUwv2kWOZCpuwb7kG3mFeC1frQ91Kwmg7XLDgthAjsTGFZAe8tLKPLtUjLHTAQe4iLYNwGzN6S4xPhNQdDaWxNXVZAVrxrE5nfkMp9ZBgxxVKItkqaRQEZCADV1Vm7cMt3lt9Fib3qQrxeXXSVVuZA54X6ZARykAZDZD"
 
-
-app.post('/webhook', function (req, res) {
-  var data = req.body;
-
-  // Make sure this is a page subscription
-  if (data.object === 'page') {
-
-    // Iterate over each entry - there may be multiple if batched
-    data.entry.forEach(function(entry) {
-      var pageID = entry.id;
-      var timeOfEvent = entry.time;
-
-      // Iterate over each messaging event
-      entry.messaging.forEach(function(event) {
-        if (event.message) {
-          receivedMessage(event);
-        } else {
-          console.log("Webhook received unknown event: ", event);
-        }
-      });
-    });
-
-    // Assume all went well.
-    //
-    // You must send back a 200, within 20 seconds, to let us know
-    // you've successfully received the callback. Otherwise, the request
-    // will time out and we will keep trying to resend.
-    res.sendStatus(200);
-  }
-});
-  
-function receivedMessage(event) {
-  // Putting a stub for now, we'll expand it in the following steps
-  console.log("Message data: ", event.message);
-
-  var senderID = event.sender.id;
-  var recipientID = event.recipient.id;
-  var timeOfMessage = event.timestamp;
-  var message = event.message;
-
-  console.log("Received message for user %d and page %d at %d with message:", 
-    senderID, recipientID, timeOfMessage);
-  console.log(JSON.stringify(message));
-
-  var messageId = message.mid;
-
-  var messageText = message.text;
-  var messageAttachments = message.attachments;
-
-  if (messageText) {
-
-    // If we receive a text message, check to see if it matches a keyword
-    // and send back the example. Otherwise, just echo the text we received.
-    switch (messageText) {
-      case 'generic':
-        sendGenericMessage(senderID);
-        break;
-
-      default:
-        sendTextMessage(senderID, messageText);
-    }
-  } else if (messageAttachments) {
-    sendTextMessage(senderID, "Message with attachment received");
-  }
+function sendTextMessage(sender, text) {
+    let messageData = { text:text }
+    request({
+	    url: 'https://graph.facebook.com/v2.6/me/messages',
+	    qs: {access_token:token},
+	    method: 'POST',
+		json: {
+		    recipient: {id:sender},
+			message: messageData,
+		}
+	}, function(error, response, body) {
+		if (error) {
+		    console.log('Error sending messages: ', error)
+		} else if (response.body.error) {
+		    console.log('Error: ', response.body.error)
+	    }
+    })
 }
 
-function sendGenericMessage(recipientId, messageText) {
-  // To be expanded in later sections
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      attachment: {
-        type: "template",
-        payload: {
-          template_type: "generic",
-          elements: [{
-            title: "rift",
-            subtitle: "Next-generation virtual reality",
-            item_url: "https://www.oculus.com/en-us/rift/",               
-            image_url: "http://messengerdemo.parseapp.com/img/rift.png",
-            buttons: [{
-              type: "web_url",
-              url: "https://www.oculus.com/en-us/rift/",
-              title: "Open Web URL"
-            }, {
-              type: "postback",
-              title: "Call Postback",
-              payload: "Payload for first bubble",
-            }],
-          }, {
-            title: "touch",
-            subtitle: "Your Hands, Now in VR",
-            item_url: "https://www.oculus.com/en-us/touch/",               
-            image_url: "http://messengerdemo.parseapp.com/img/touch.png",
-            buttons: [{
-              type: "web_url",
-              url: "https://www.oculus.com/en-us/touch/",
-              title: "Open Web URL"
-            }, {
-              type: "postback",
-              title: "Call Postback",
-              payload: "Payload for second bubble",
-            }]
-          }]
-        }
+
+
+app.post('/webhook/', function (req, res) {
+    let messaging_events = req.body.entry[0].messaging
+    for (let i = 0; i < messaging_events.length; i++) {
+	    let event = req.body.entry[0].messaging[i]
+	    let sender = event.sender.id
+	    if (event.message && event.message.text) {
+		    let text = event.message.text
+		    if (text === 'Generic') {
+			    sendGenericMessage(sender)
+		    	continue
+		    }
+		    sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+	    }
+    }
+    res.sendStatus(200)
+})
+
+  app.post('/webhook/', function (req, res) {
+    let messaging_events = req.body.entry[0].messaging
+    for (let i = 0; i < messaging_events.length; i++) {
+      let event = req.body.entry[0].messaging[i]
+      let sender = event.sender.id
+      if (event.message && event.message.text) {
+  	    let text = event.message.text
+  	    if (text === 'Generic') {
+  		    sendGenericMessage(sender)
+  		    continue
+  	    }
+  	    sendTextMessage(sender, "Text received, echo: " + text.substring(0, 200))
+      }
+      if (event.postback) {
+  	    let text = JSON.stringify(event.postback)
+  	    sendTextMessage(sender, "Postback received: "+text.substring(0, 200), token)
+  	    continue
       }
     }
-  };  
+    res.sendStatus(200)
+  })
 
-  callSendAPI(messageData);
-}
-}
-
-function sendTextMessage(recipientId, messageText) {
-  var messageData = {
-    recipient: {
-      id: recipientId
-    },
-    message: {
-      text: messageText
+function sendGenericMessage(sender) {
+    let messageData = {
+	    "attachment": {
+		    "type": "template",
+		    "payload": {
+				"template_type": "generic",
+			    "elements": [{
+					"title": "First card",
+				    "subtitle": "Element #1 of an hscroll",
+				    "image_url": "http://messengerdemo.parseapp.com/img/rift.png",
+				    "buttons": [{
+					    "type": "web_url",
+					    "url": "https://www.messenger.com",
+					    "title": "web url"
+				    }, {
+					    "type": "postback",
+					    "title": "Postback",
+					    "payload": "Payload for first element in a generic bubble",
+				    }],
+			    }, {
+				    "title": "Second card",
+				    "subtitle": "Element #2 of an hscroll",
+				    "image_url": "http://messengerdemo.parseapp.com/img/gearvr.png",
+				    "buttons": [{
+					    "type": "postback",
+					    "title": "Postback",
+					    "payload": "Payload for second element in a generic bubble",
+				    }],
+			    }]
+		    }
+	    }
     }
-  };
-
-  callSendAPI(messageData);
+    request({
+	    url: 'https://graph.facebook.com/v2.6/me/messages',
+	    qs: {access_token:token},
+	    method: 'POST',
+	    json: {
+		    recipient: {id:sender},
+		    message: messageData,
+	    }
+    }, function(error, response, body) {
+	    if (error) {
+		    console.log('Error sending messages: ', error)
+	    } else if (response.body.error) {
+		    console.log('Error: ', response.body.error)
+	    }
+    })
 }
-
-function callSendAPI(messageData) {
-  request({
-    uri: 'https://graph.facebook.com/v2.6/me/messages',
-    qs: { access_token: PAGE_ACCESS_TOKEN },
-    method: 'POST',
-    json: messageData
-
-  }, function (error, response, body) {
-    if (!error && response.statusCode == 200) {
-      var recipientId = body.recipient_id;
-      var messageId = body.message_id;
-
-      console.log("Successfully sent generic message with id %s to recipient %s", 
-        messageId, recipientId);
-    } else {
-      console.error("Unable to send message.");
-      console.error(response);
-      console.error(error);
-    }
-  });  
-}
-
